@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 #########################################
-# Alexis Déhu -- 2023-09-18
-# MongoDB installation on Ubuntu 22.04
+# MARTIN Baptiste -- 2024-11-12
+# freeRadius installation on Ubuntu 22.04
 #
 # A lancer depuis user supervisor sans
-# sudo, mot de passe prompt après
+# sudo, mot de passe prompt apr\u00e8s
 #########################################
 
 show_time ()
@@ -33,6 +33,16 @@ hidden_check_status ()
     fi
 }
 
+add_proxy()
+{
+    show_time
+    echo -n "Adding proxy..."
+    sudo echo "Acquire {
+  HTTP::proxy "http://cache.univ-pau.fr:3128";
+  HTTPS::proxy "http://cache.univ-pau.fr:3128";
+}" > /etc/apt/apt.conf.d/proxy
+}
+
 updating ()
 {
     show_time
@@ -41,116 +51,59 @@ updating ()
     check_status
 }
 
-installing_dependencies ()
+
+install_freeradius ()
 {
     show_time
-    echo -n "Installing dependencies..."
-    sudo apt-get install -y gnupg curl &> /dev/null
+    echo -n "Installing FreeRadius..."
+    sudo apt install -y freeradius &> /dev/null
     check_status
 }
 
-adding_gpg_key ()
-{
-    show_time
-    echo -n "Adding MongoDB repo GPG key..."
-    curl -fsSL https://pgp.mongodb.com/server-6.0.asc | sudo gpg -o /etc/apt/trusted.gpg.d//mongodb-server-6.0.gpg --dearmor &> /dev/null
-    check_status
-}
 
-adding_mongodb_repo ()
-{
-    show_time
-    echo -n "Adding MongoDB repository..."
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list &> /dev/null
-    check_status
-}
-
-install_mongodb ()
-{
-    show_time
-    echo -n "Installing MongoDB..."
-    sudo apt install -y mongodb-org &> /dev/null
-    check_status
-}
-
-enabling_service ()
-{
-    show_time
-    echo -n "Enabling & starting MongoDB service..."
-    sudo systemctl enable --now mongod &> /dev/null
-    hidden_check_status
-    sleep 10 
-    mongosh --eval "quit" &> /dev/null
-    check_status
-}
-
-creating_admin_db ()
-{
-    show_time
-    echo -n "Creating "admin" database..."
-    echo 'user admin' > script.js
-    mongosh < script.js &> /dev/null
-    hidden_check_status
-    rm -f script.js
-    check_status
-}
-
-configuring_db ()
-{
-    show_time
-    echo -n "Configuring "root" user..."
-    echo "use admin" >> script.js
-    echo 'db.createUser({user: "root", pwd: "azerty",roles : [{ role :"userAdminAnyDatabase", db: "admin"},"readWriteAnyDatabase" ]})' >> script.js
-    hidden_check_status
-    # mongosh --eval "use admin; db.createUser({user: "root", pwd: "azerty",roles : [{ role :"userAdminAnyDatabase", db: "admin"},"readWriteAnyDatabase" ]})" &> /dev/null
-    mongosh < script.js &> /dev/null
-    hidden_check_status
-    rm -f script.js &> /dev/null
-    check_status
-}
-
-editing_mongodb_conf ()
-{
-    show_time
-    echo -n "Editing MongoDB configuration file..."
-    echo "security:" >> sudo tee /etc/mongodb.conf
-    hidden_check_status
-    echo "authorization: "enabled"" >> sudo tee /etc/mongodb.conf
-    check_status
-}
-
-restarting_service ()
-{
-    show_time
-    echo -n "Restarting "mongod" service..."
-    sudo systemctl restart mongod  &> /dev/null
-    check_status
-}
 
 installation_is_done ()
 {
-    echo -e "\n\nInstallation is done\Type this command to connect to the Mongo shell\n\n"
-    echo 'mongosh -u "root" -p "azerty" --authenticationDatabase "admin"'
+    echo -e "\n\nInstallation is done\n\n"
+    echo "Folder is /etc/freeradius/3.0/"
+    installed=("yes")
+	select item in "${installed[@]}" Quit
+	    do
+	        
+                case $REPLY in
+		    1) sudo cd /etc/freeradius/3.0/;;
+
+                    $((${#installed[@]}+1))) echo "We're done!"; break;;
+        *) echo "Ooops - unknown choice $REPLY";;
+    esac
+done
+
     echo
     exit 0
 }
 
-main ()
+install ()
 {
     sudo echo
     clear
+    add_proxy
     updating
-    installing_dependencies
-    adding_gpg_key
-    adding_mongodb_repo
-    updating
-    install_mongodb
-    enabling_service
-    creating_admin_db
-    configuring_db
-    editing_mongodb_conf
-    restarting_service
+    install_freeradius
     installation_is_done
 }
 
-main
+
+
+	
+items=("Install" "Clear config" "Item 3")
+select item in "${items[@]}" Quit
+do
+    case $REPLY in
+        1) install;;
+        2) echo "Selected item #$REPLY which means $item";;
+        3) echo "Selected item #$REPLY which means $item";;
+        
+        $((${#items[@]}+1))) echo "We're done!"; break;;
+        *) echo "Ooops - unknown choice $REPLY";;
+    esac
+done
